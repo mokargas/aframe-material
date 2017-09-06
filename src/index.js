@@ -12,4 +12,6 @@
   require("./checkbox");
   require("./button");
   require("./toast");
+  require("./colorwheel");
+
 })();
