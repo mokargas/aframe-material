@@ -186,26 +186,23 @@ AFRAME.registerComponent('colorwheel', {
           radius = this.data.wheelSize
 
     let polarPosition;
-    //colorWheel.getObject3D('mesh').updateMatrixWorld();
+    colorWheel.getObject3D('mesh').updateMatrixWorld();
     colorWheel.getObject3D('mesh').worldToLocal(position);
 
-    //TODO: Get cursor position
-    //this.objects.hueCursor.position.copy(position);
 
-    polarPosition = {
-      r: Math.sqrt(position.x * position.x + position.z * position.z),
-      theta: Math.PI + Math.atan2(-position.z, position.x)
-    };
-    var angle = ((polarPosition.theta * (180 / Math.PI)) + 180) % 360;
-    this.hsv.h = angle / 360;
-    this.hsv.s = polarPosition.r / radius;
+    let angle = Math.atan2(position.x, position.y)
+    let hue = 360 - (Math.round(angle * (180 / Math.PI)) + 270) % 360
+    let dist = Math.min(Math.sqrt(Math.pow(position.x, 2) + Math.pow(position.y, 2)), radius)
+
+
+    this.hsv.h = hue
+    this.hsv.s = Math.round((100 / radius) * dist)
     this.el.updateColor()
   },
 
   updateColor: function() {
-    var rgb = this.hsv2rgb(this.hsv)
-    var color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
-    console.debug(rgb, color)
+    var rgb = this.hsvToRgb(this.hsv)
+    console.debug(this.hsv, rgb)
 
     //TODO: Add indicator element of selected color
     if(this.data.showSelection){
@@ -217,8 +214,7 @@ AFRAME.registerComponent('colorwheel', {
 
     this.colorHasChanged = true;
   },
-
-  hsv2rgb: function(hsv) {
+  hsvToRgb: function(hsv) {
     var r, g, b, i, f, p, q, t;
     var h = THREE.Math.clamp(hsv.h, 0, 1);
     var s = THREE.Math.clamp(hsv.s, 0, 1);
