@@ -5,7 +5,7 @@
     <title>aframe-material😲😆😛</title>
     <meta name="description" content="Aframe-Material">
     <script src="https://aframe.io/releases/0.6.1/aframe.min.js"></script>
-    <script src="https://rawgit.com/mayognaise/aframe-mouse-cursor-component/master/dist/aframe-mouse-cursor-component.min.js"></script>
+    <!-- <script src="https://rawgit.com/mayognaise/aframe-mouse-cursor-component/master/dist/aframe-mouse-cursor-component.min.js"></script> -->
     <script src="https://cdn.rawgit.com/zcanter/aframe-gradient-sky/master/dist/gradientsky.min.js"></script>
     <script src="dist/aframe-material.js"></script>
     <script type="text/javascript">
@@ -14,10 +14,15 @@
   </head>
   <body>
     <a-scene>
-      <a-entity laser-controls="hand: right"></a-entity>
+      <!-- <a-entity laser-controls="hand: right"></a-entity>
+      <a-entity laser-controls="hand: left"></a-entity> -->
 
-      <a-entity> <a-camera look-controls-enabled wasd-controls-enabled mouse-cursor></a-camera></a-entity>
-      <a-colorwheel position="-1.578 1 -2.5" rotation="0 21.601 0"></a-colorwheel>
+      <a-entity light="type:directional; castShadow:true; color:#fff; intensity:4.0" position="1 1 1"></a-entity>
+      <a-entity>
+        <a-camera raycaster look-controls-enabled wasd-controls-enabled>
+          <a-entity cursor="rayOrigin: mouse"></a-entity>
+        </a-camera>
+      </a-entity>
 
       <!-- BEGIN INPUTS/KEYBOARD -->
       <a-keyboard></a-keyboard>
@@ -39,6 +44,8 @@
         </a-form>
       </a-rounded>
       <!-- END FORM -->
+
+      <a-colorwheel position="-1.578 1 -2.5" rotation="0 21.601 0"></a-colorwheel>
 
       <!-- BEGIN TOAST -->
       <a-toast message="This is a toast" action="Got it"></a-toast>
