@@ -5,24 +5,24 @@ AFRAME.registerComponent('colorwheel', {
   dependencies: ['raycaster'],
   schema: {
     value: {
-      type: "string",
-      default: ""
+      type: 'string',
+      default: ''
     },
     name: {
-      type: "string",
-      default: ""
+      type: 'string',
+      default: ''
     },
     disabled: {
-      type: "boolean",
+      type: 'boolean',
       default: false
     },
     color: {
-      type: "color",
-      default: "#000"
+      type: 'color',
+      default: '#000'
     },
     backgroundColor: {
-      type: "color",
-      default: "#FFF"
+      type: 'color',
+      default: '#FFF'
     },
     //Size of the colorWheel. NOTE: Assumed in metres.
     wheelSize: {
@@ -39,7 +39,7 @@ AFRAME.registerComponent('colorwheel', {
       default: 0.10
     }
   },
-
+  //Util to animate between colors. Item should be a material.
   setTween: function(item, fromColor, toColor) {
     this.tween = new TWEEN.Tween(new THREE.Color(fromColor)).to(toColor, 500).onUpdate(function() {
       item.color.r = this.r;
@@ -48,10 +48,11 @@ AFRAME.registerComponent('colorwheel', {
     }).start()
   },
   init: function() {
-    const that = this;
+    const that = this
 
+    //Padding around background, between elements
     //TODO: Expose?
-    let padding = 0.15;
+    const padding = 0.15
 
     //Selected HSV color of the wheel
     this.hsv = {
@@ -71,6 +72,7 @@ AFRAME.registerComponent('colorwheel', {
     }
 
     //Background color of this interface
+    //TODO: Expose?
     this.backgroundWidth = this.data.wheelSize * 2;
     this.backgroundHeight = this.data.wheelSize * 2;
 
@@ -98,6 +100,7 @@ AFRAME.registerComponent('colorwheel', {
     this.el.appendChild(this.colorWheel);
 
     //Plane for the brightness slider
+    //TODO: Expose?
     this.brightnessSliderHeight = (this.data.wheelSize + padding) * 2
     this.brightnessSliderWidth = 0.10
 
@@ -227,9 +230,7 @@ AFRAME.registerComponent('colorwheel', {
       uniform float brightness;
       varying vec2 vUv;
       vec3 hsb2rgb(in vec3 c){
-          vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0,
-                           0.0,
-                           1.0 );
+          vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );
           rgb = rgb * rgb * (3.0 - 2.0 * rgb);
           return c.z * mix( vec3(1.0), rgb, c.y);
       }
