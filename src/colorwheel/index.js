@@ -43,42 +43,64 @@ AFRAME.registerComponent('colorwheel', {
     let that = this;
 
     //TODO: Expose?
-    let padding = 0.1;
+    let padding = 0.15;
 
     //Selected HSV color of the wheel
     this.hsv = {
       h: 0.0,
       s: 0.0,
       v: 1.0
-    };
+    }
 
     const defaultMaterial = {
       color: '#ffffff',
       flatShading: true,
       transparent: true,
       fog: false,
-      side: 'double',
-      vertexColors: THREE.FaceColors
+      side: 'double'
     }
 
     //Background color of this interface
+    this.backgroundWidth = this.data.wheelSize * 2;
+    this.backgroundHeight = this.data.wheelSize * 2;
+
     this.background = document.createElement('a-rounded');
-    this.background.setAttribute('radius', 0.01)
-    this.background.setAttribute('width', (this.data.wheelSize + padding) * 2)
-    this.background.setAttribute('height', (this.data.wheelSize + padding) * 2)
+    this.background.setAttribute('radius', 0.02)
+    this.background.setAttribute('width', this.backgroundWidth + 2 * padding)
+    this.background.setAttribute('height',this.backgroundHeight + 2 * padding)
     this.background.setAttribute('position', {
       x: -(this.data.wheelSize + padding),
       y: -(this.data.wheelSize + padding),
       z: -0.001
     })
     this.background.setAttribute('side', 'double')
-    this.el.appendChild(this.background);
-
-    //Plane the colorwheel will inhabit
+    this.el.appendChild(this.background)
+    
+    //Circle for colorwheel
     this.colorWheel = document.createElement('a-circle')
     this.colorWheel.setAttribute('radius', this.data.wheelSize)
     this.colorWheel.setAttribute('material', defaultMaterial)
+    this.colorWheel.setAttribute('position', {
+      x: 0,
+      y: 0,
+      z: 0
+    })
     this.el.appendChild(this.colorWheel);
+
+    //Plane for the brightness slider
+    this.brightnessSliderHeight = (this.data.wheelSize + padding) * 2
+    this.brightnessSliderWidth = 0.10
+
+    this.brightnessSlider = document.createElement('a-plane')
+    this.brightnessSlider.setAttribute('width', this.brightnessSliderWidth)
+    this.brightnessSlider.setAttribute('height', this.brightnessSliderHeight)
+    this.brightnessSlider.setAttribute('material', defaultMaterial)
+    this.brightnessSlider.setAttribute('position', {
+      x: this.data.wheelSize + this.brightnessSliderWidth,
+      y: 0,
+      z: 0
+    })
+    this.el.appendChild(this.brightnessSlider);
 
     //Plane the color selection element will inhabit
     if (this.data.showSelection) {
@@ -88,16 +110,16 @@ AFRAME.registerComponent('colorwheel', {
 
       //Place in top left, lift slightly
       this.selectionEl.setAttribute('position', {
-        x: -((this.data.wheelSize - this.data.selectionSize / 2)),
-        y: (this.data.wheelSize - this.data.selectionSize / 2),
-        z: 0.01
+        x: -this.data.wheelSize,
+        y: this.data.wheelSize,
+        z: 0.001
       })
       this.el.appendChild(this.selectionEl);
-
     }
 
     //Handlers
     this.el.initColorWheel = this.initColorWheel.bind(this)
+    this.el.initBrightnessSlider = this.initBrightnessSlider.bind(this)
     this.el.updateColor = this.updateColor.bind(this)
     this.el.onHueDown = this.onHueDown.bind(this)
     this.el.refreshRaycaster = this.refreshRaycaster.bind(this)
@@ -107,6 +129,7 @@ AFRAME.registerComponent('colorwheel', {
 
     setTimeout(function() {
       that.el.initColorWheel()
+      that.el.initBrightnessSlider()
       that.el.refreshRaycaster()
 
       that.colorWheel.addEventListener('click', function(evt) {
@@ -134,8 +157,58 @@ AFRAME.registerComponent('colorwheel', {
     var raycasterEl = AFRAME.scenes[0].querySelector('[raycaster]');
     raycasterEl.components.raycaster.refreshObjects();
   },
+  initBrightnessSlider: function(){
+    console.debug('setup brightness slider')
+
+    //NOTE: In A-Painter, this is actually a model submesh or element. We're going to generate it here and add it to our plane.
+
+    let vertexShader = `
+      varying vec2 vUv;
+      void main(){
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+      }
+    `
+
+    let fragmentShader = `
+      uniform vec3 color1;
+      uniform vec3 color2;
+      varying vec2 vUv;
+
+      void main(){
+        vec4 c1 = vec4(color1, 1.0);
+  	    vec4 c2 = vec4(color2, 1.0);
+
+        vec4 color = mix(c2, c1, smoothstep(0.0, 1.0, vUv.y));
+        gl_FragColor = color;
+      }
+    `
+
+    let material = new THREE.ShaderMaterial({
+      uniforms: {
+        resolution:{
+          type: 'v2',
+          value: new THREE.Vector2(this.brightnessSliderWidth, this.brightnessSliderHeight)
+        },
+        color1: {
+          type: 'c',
+          value: new THREE.Color(0xFFFFFF)
+        },
+        color2: {
+          type: 'c',
+          value: new THREE.Color(0x000000)
+        }
+      },
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader
+    });
+
+    this.brightnessSlider.getObject3D('mesh').material = material;
+    this.brightnessSlider.getObject3D('mesh').material.needsUpdate = true;
+
+  },
   initColorWheel: function() {
-    console.debug('setup color wheel wheel')
+    console.debug('setup color wheel')
     var vertexShader = '\
       varying vec2 vUv;\
       void main() {\
@@ -180,7 +253,9 @@ AFRAME.registerComponent('colorwheel', {
     this.colorWheel.getObject3D('mesh').material = material;
     this.colorWheel.getObject3D('mesh').material.needsUpdate = true;
   },
+  onBrightnessDown: function(position){
 
+  },
   onHueDown: function(position) {
     const colorWheel = this.colorWheel,
           radius = this.data.wheelSize
@@ -193,7 +268,6 @@ AFRAME.registerComponent('colorwheel', {
     let angle = Math.atan2(position.x, position.y)
     let hue = 360 - (Math.round(angle * (180 / Math.PI)) + 270) % 360
     let dist = Math.min(Math.sqrt(Math.pow(position.x, 2) + Math.pow(position.y, 2)), radius)
-
 
     this.hsv.h = hue
     this.hsv.s = Math.round((100 / radius) * dist)
