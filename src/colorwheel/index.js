@@ -264,11 +264,17 @@ AFRAME.registerComponent('colorwheel', {
     brightnessSlider.getObject3D('mesh').updateMatrixWorld()
     brightnessSlider.getObject3D('mesh').worldToLocal(position)
 
-    let brightness = 1.0 + position.y / this.brightnessSliderHeight
+    //Value between 0 and 1
+    //Plane is centre registered
+    let cursorOffset = position.y + this.brightnessSliderHeight / 2
+    let brightness =  cursorOffset  / this.brightnessSliderHeight
 
     this.colorWheel.getObject3D('mesh').material.uniforms['brightness'].value = brightness
     this.hsv.v = brightness
-    this.updateColor()
+
+    console.debug('brightness', brightness, 'y', position.y)
+
+    this.el.updateColor()
   },
   onHueDown: function(position) {
     const colorWheel = this.colorWheel,
