@@ -75,7 +75,7 @@ AFRAME.registerComponent('colorwheel', {
     })
     this.background.setAttribute('side', 'double')
     this.el.appendChild(this.background)
-    
+
     //Circle for colorwheel
     this.colorWheel = document.createElement('a-circle')
     this.colorWheel.setAttribute('radius', this.data.wheelSize)
@@ -122,36 +122,26 @@ AFRAME.registerComponent('colorwheel', {
     this.el.initBrightnessSlider = this.initBrightnessSlider.bind(this)
     this.el.updateColor = this.updateColor.bind(this)
     this.el.onHueDown = this.onHueDown.bind(this)
+    this.el.onBrightnessDown = this.onBrightnessDown.bind(this)
     this.el.refreshRaycaster = this.refreshRaycaster.bind(this)
 
-    this.el.focus = this.focus.bind(this);
-    this.el.blur = this.blur.bind(this);
-
     setTimeout(function() {
+
       that.el.initColorWheel()
       that.el.initBrightnessSlider()
       that.el.refreshRaycaster()
 
       that.colorWheel.addEventListener('click', function(evt) {
         if (that.data.disabled) return;
-        console.debug(evt.detail.intersection)
         that.el.onHueDown(evt.detail.intersection.point)
-        that.focus();
+      });
+
+      that.brightnessSlider.addEventListener('click', function(evt) {
+        if (that.data.disabled) return;
+        that.el.onBrightnessDown(evt.detail.intersection.point)
       });
 
     }, 5)
-
-
-    Object.defineProperty(this.el, 'value', {
-      get: function() {
-        return this.getAttribute('value');
-      },
-      set: function(value) {
-        this.setAttribute('value', value);
-      },
-      enumerable: true,
-      configurable: true
-    });
   },
   refreshRaycaster: function(){
     var raycasterEl = AFRAME.scenes[0].querySelector('[raycaster]');
@@ -254,16 +244,23 @@ AFRAME.registerComponent('colorwheel', {
     this.colorWheel.getObject3D('mesh').material.needsUpdate = true;
   },
   onBrightnessDown: function(position){
+    const brightnessSlider = this.brightnessSlider
 
+    brightnessSlider.getObject3D('mesh').updateMatrixWorld()
+    brightnessSlider.getObject3D('mesh').worldToLocal(position)
+
+    let brightness = 1.0 + position.y / this.brightnessSliderHeight
+
+    this.colorWheel.getObject3D('mesh').material.uniforms['brightness'].value = brightness
+    this.hsv.v = brightness
+    this.updateColor()
   },
   onHueDown: function(position) {
     const colorWheel = this.colorWheel,
           radius = this.data.wheelSize
 
-    let polarPosition;
     colorWheel.getObject3D('mesh').updateMatrixWorld();
     colorWheel.getObject3D('mesh').worldToLocal(position);
-
 
     let angle = Math.atan2(position.x, position.y)
     let hue = 360 - (Math.round(angle * (180 / Math.PI)) + 270) % 360
@@ -374,29 +371,6 @@ AFRAME.registerComponent('colorwheel', {
       s: s,
       v: v
     };
-  },
-  isFocused: false,
-  focus: function(noemit) {
-    if (this.isFocused) {
-      return;
-    }
-    this.isFocused = true;
-
-    Event.emit(this.el, 'focus');
-    if (!noemit) {
-      Event.emit(document.body, 'didfocuscolorwheel', this.el);
-    }
-  },
-  blur: function(noemit) {
-    if (!this.isFocused) {
-      return;
-    }
-    this.isFocused = false;
-
-    Event.emit(this.el, 'blur');
-    if (!noemit) {
-      Event.emit(document.body, 'didblurcolorwheel', this.el);
-    }
   },
   update: function() {
     let that = this;
