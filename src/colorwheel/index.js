@@ -39,8 +39,15 @@ AFRAME.registerComponent('colorwheel', {
       default: 0.10
     }
   },
+  setTween: function(item, fromColor, toColor) {
+    this.tween = new TWEEN.Tween(new THREE.Color(fromColor)).to(toColor, 500).onUpdate(function() {
+      item.color.r = this.r;
+      item.color.g = this.g;
+      item.color.b = this.b;
+    }).start()
+  },
   init: function() {
-    let that = this;
+    const that = this;
 
     //TODO: Expose?
     let padding = 0.15;
@@ -51,6 +58,8 @@ AFRAME.registerComponent('colorwheel', {
       s: 0.0,
       v: 1.0
     }
+
+    this.color = '#ffffff'
 
     const defaultMaterial = {
       color: '#ffffff',
@@ -67,7 +76,7 @@ AFRAME.registerComponent('colorwheel', {
     this.background = document.createElement('a-rounded');
     this.background.setAttribute('radius', 0.02)
     this.background.setAttribute('width', this.backgroundWidth + 2 * padding)
-    this.background.setAttribute('height',this.backgroundHeight + 2 * padding)
+    this.background.setAttribute('height', this.backgroundHeight + 2 * padding)
     this.background.setAttribute('position', {
       x: -(this.data.wheelSize + padding),
       y: -(this.data.wheelSize + padding),
@@ -143,11 +152,11 @@ AFRAME.registerComponent('colorwheel', {
 
     }, 5)
   },
-  refreshRaycaster: function(){
+  refreshRaycaster: function() {
     var raycasterEl = AFRAME.scenes[0].querySelector('[raycaster]');
     raycasterEl.components.raycaster.refreshObjects();
   },
-  initBrightnessSlider: function(){
+  initBrightnessSlider: function() {
     console.debug('setup brightness slider')
 
     //NOTE: In A-Painter, this is actually a model submesh or element. We're going to generate it here and add it to our plane.
@@ -176,7 +185,7 @@ AFRAME.registerComponent('colorwheel', {
 
     let material = new THREE.ShaderMaterial({
       uniforms: {
-        resolution:{
+        resolution: {
           type: 'v2',
           value: new THREE.Vector2(this.brightnessSliderWidth, this.brightnessSliderHeight)
         },
@@ -243,7 +252,7 @@ AFRAME.registerComponent('colorwheel', {
     this.colorWheel.getObject3D('mesh').material = material;
     this.colorWheel.getObject3D('mesh').material.needsUpdate = true;
   },
-  onBrightnessDown: function(position){
+  onBrightnessDown: function(position) {
     const brightnessSlider = this.brightnessSlider
 
     brightnessSlider.getObject3D('mesh').updateMatrixWorld()
@@ -257,61 +266,89 @@ AFRAME.registerComponent('colorwheel', {
   },
   onHueDown: function(position) {
     const colorWheel = this.colorWheel,
-          radius = this.data.wheelSize
+      radius = this.data.wheelSize
 
     colorWheel.getObject3D('mesh').updateMatrixWorld();
     colorWheel.getObject3D('mesh').worldToLocal(position);
 
     let polarPosition = {
-         r: Math.sqrt(position.x * position.x + position.y * position.y),
-         theta: Math.PI + Math.atan2(position.y, position.x)
-       };
-     var angle = ((polarPosition.theta * (180 / Math.PI)) + 180) % 360;
-     this.hsv.h = angle / 360;
-     this.hsv.s = polarPosition.r / radius;
+      r: Math.sqrt(position.x * position.x + position.y * position.y),
+      theta: Math.PI + Math.atan2(position.y, position.x)
+    };
+    var angle = ((polarPosition.theta * (180 / Math.PI)) + 180) % 360;
+    this.hsv.h = angle / 360;
+    this.hsv.s = polarPosition.r / radius;
 
     this.el.updateColor()
-    console.debug(this.hsv.h)
   },
 
   updateColor: function() {
     let rgb = this.hsvToRgb(this.hsv)
-    let color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
+    let color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')'
+    
+    const selectionEl = this.selectionEl.getObject3D('mesh')
 
     //Update indicator element of selected color
-    if(this.data.showSelection){
-      this.selectionEl.getObject3D('mesh').material.color.set( color )
-      this.selectionEl.getObject3D('mesh').material.needsUpdate = true
+    if (this.data.showSelection) {
+      //selectionEl.material.color.set(color)
+      this.setTween(selectionEl.material, selectionEl.material.color, new THREE.Color(color))
+      selectionEl.material.needsUpdate = true
     }
 
-    this.colorHasChanged = true;
+    this.color = color
 
-    
+    Event.emit(this.el, 'changecolor', color)
+    Event.emit(document.body, 'didchangecolor', this.el);
+
   },
   hsvToRgb: function(hsv) {
     var r, g, b, i, f, p, q, t;
-      var h = THREE.Math.clamp(hsv.h, 0, 1);
-      var s = THREE.Math.clamp(hsv.s, 0, 1);
-      var v = hsv.v;
+    var h = THREE.Math.clamp(hsv.h, 0, 1);
+    var s = THREE.Math.clamp(hsv.s, 0, 1);
+    var v = hsv.v;
 
-      i = Math.floor(h * 6);
-      f = h * 6 - i;
-      p = v * (1 - s);
-      q = v * (1 - f * s);
-      t = v * (1 - (1 - f) * s);
-      switch (i % 6) {
-        case 0: r = v; g = t; b = p; break;
-        case 1: r = q; g = v; b = p; break;
-        case 2: r = p; g = v; b = t; break;
-        case 3: r = p; g = q; b = v; break;
-        case 4: r = t; g = p; b = v; break;
-        case 5: r = v; g = p; b = q; break;
-      }
-      return {
-        r: Math.round(r * 255),
-        g: Math.round(g * 255),
-        b: Math.round(b * 255)
-      };
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0:
+        r = v;
+        g = t;
+        b = p;
+        break;
+      case 1:
+        r = q;
+        g = v;
+        b = p;
+        break;
+      case 2:
+        r = p;
+        g = v;
+        b = t;
+        break;
+      case 3:
+        r = p;
+        g = q;
+        b = v;
+        break;
+      case 4:
+        r = t;
+        g = p;
+        b = v;
+        break;
+      case 5:
+        r = v;
+        g = p;
+        b = q;
+        break;
+    }
+    return {
+      r: Math.round(r * 255),
+      g: Math.round(g * 255),
+      b: Math.round(b * 255)
+    };
   },
 
   rgb2hsv: function(r, g, b) {
