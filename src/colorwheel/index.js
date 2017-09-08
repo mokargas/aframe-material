@@ -100,7 +100,7 @@ AFRAME.registerComponent('colorwheel', {
     this.el.appendChild(this.colorWheel);
 
     //Plane for the brightness slider
-    //TODO: Expose?
+    //TODO: Expose height and width for customisation?
     this.brightnessSliderHeight = (this.data.wheelSize + padding) * 2
     this.brightnessSliderWidth = 0.10
 
@@ -129,6 +129,22 @@ AFRAME.registerComponent('colorwheel', {
       })
       this.el.appendChild(this.selectionEl);
     }
+
+    //Color 'cursor'. We'll use this to indicate a rough color selection
+    this.colorCursorOptions = {
+      cursorRadius: 0.025,
+      cursorSegments: 32,
+      cursorColor: new THREE.Color(0x000000),
+      lineWidth: 3.0
+    }
+    this.colorCursorOptions.cursorMaterial = new THREE.LineBasicMaterial( { color: this.colorCursorOptions.cursorColor, transparent:true, linewidth: this.colorCursorOptions.lineWidth } ),
+
+    //A custom THREE object because we don't want the centre vertex, and want a line material
+    this.colorCursor = document.createElement('a-entity')
+    let geometry = new THREE.CircleGeometry( this.colorCursorOptions.cursorRadius, this.colorCursorOptions.cursorSegments )
+    geometry.vertices.shift()
+    this.colorCursor.setObject3D('mesh', new THREE.Line( geometry, this.colorCursorOptions.cursorMaterial ))
+    this.el.appendChild(this.colorCursor);
 
     //Handlers
     this.bindMethods()
@@ -272,8 +288,6 @@ AFRAME.registerComponent('colorwheel', {
     this.colorWheel.getObject3D('mesh').material.uniforms['brightness'].value = brightness
     this.hsv.v = brightness
 
-    console.debug('brightness', brightness, 'y', position.y)
-
     this.el.updateColor()
   },
   onHueDown: function(position) {
@@ -310,7 +324,6 @@ AFRAME.registerComponent('colorwheel', {
     this.color = color
 
     //Notify listeners the color has changed. TODO: Test this works :0
-
     Event.emit(this.el, 'changecolor', color)
     Event.emit(document.body, 'didchangecolor', this.el);
 
@@ -364,47 +377,9 @@ AFRAME.registerComponent('colorwheel', {
       b: Math.round(b * 255)
     };
   },
-
-  rgb2hsv: function(r, g, b) {
-    var max = Math.max(r, g, b);
-    var min = Math.min(r, g, b);
-    var d = max - min;
-    var h;
-    var s = (max === 0 ? 0 : d / max);
-    var v = max;
-
-    if (arguments.length === 1) {
-      g = r.g;
-      b = r.b;
-      r = r.r;
-    }
-
-    switch (max) {
-      case min:
-        h = 0;
-        break;
-      case r:
-        h = (g - b) + d * (g < b ? 6 : 0);
-        h /= 6 * d;
-        break;
-      case g:
-        h = (b - r) + d * 2;
-        h /= 6 * d;
-        break;
-      case b:
-        h = (r - g) + d * 4;
-        h /= 6 * d;
-        break;
-    }
-    return {
-      h: h,
-      s: s,
-      v: v
-    };
-  },
   update: function() {
-    let that = this;
-    //that.el.background.setAttribute('color', this.data.backgroundColor)
+    const that = this;
+    that.background.setAttribute('color', this.data.backgroundColor)
   },
   tick: function() {},
   remove: function() {},
