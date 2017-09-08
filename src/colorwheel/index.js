@@ -39,6 +39,7 @@ AFRAME.registerComponent('colorwheel', {
       default: 0.10
     }
   },
+
   setTween: function(item, fromColor, toColor) {
     this.tween = new TWEEN.Tween(new THREE.Color(fromColor)).to(toColor, 500).onUpdate(function() {
       item.color.r = this.r;
@@ -127,14 +128,9 @@ AFRAME.registerComponent('colorwheel', {
     }
 
     //Handlers
-    this.el.initColorWheel = this.initColorWheel.bind(this)
-    this.el.initBrightnessSlider = this.initBrightnessSlider.bind(this)
-    this.el.updateColor = this.updateColor.bind(this)
-    this.el.onHueDown = this.onHueDown.bind(this)
-    this.el.onBrightnessDown = this.onBrightnessDown.bind(this)
-    this.el.refreshRaycaster = this.refreshRaycaster.bind(this)
+    this.bindMethods()
 
-    setTimeout(function() {
+    setTimeout(() => {
 
       that.el.initColorWheel()
       that.el.initBrightnessSlider()
@@ -152,16 +148,30 @@ AFRAME.registerComponent('colorwheel', {
 
     }, 5)
   },
-  refreshRaycaster: function() {
-    var raycasterEl = AFRAME.scenes[0].querySelector('[raycaster]');
-    raycasterEl.components.raycaster.refreshObjects();
+
+  bindMethods: function() {
+    this.el.initColorWheel = this.initColorWheel.bind(this)
+    this.el.initBrightnessSlider = this.initBrightnessSlider.bind(this)
+    this.el.updateColor = this.updateColor.bind(this)
+    this.el.onHueDown = this.onHueDown.bind(this)
+    this.el.onBrightnessDown = this.onBrightnessDown.bind(this)
+    this.el.refreshRaycaster = this.refreshRaycaster.bind(this)
   },
+
+  refreshRaycaster: function() {
+    const raycasterEl = AFRAME.scenes[0].querySelector('[raycaster]')
+    raycasterEl.components.raycaster.refreshObjects()
+  },
+
   initBrightnessSlider: function() {
-    console.debug('setup brightness slider')
+    /*
+     * NOTE:
+     *
+     * In A-Painter, the brightness slider is actually a model submesh or element.
+     * We're going to generate it using glsl here and add it to our plane.
+     */
 
-    //NOTE: In A-Painter, this is actually a model submesh or element. We're going to generate it here and add it to our plane.
-
-    let vertexShader = `
+    const vertexShader = `
       varying vec2 vUv;
       void main(){
         vUv = uv;
@@ -169,7 +179,7 @@ AFRAME.registerComponent('colorwheel', {
       }
     `
 
-    let fragmentShader = `
+    const fragmentShader = `
       uniform vec3 color1;
       uniform vec3 color2;
       varying vec2 vUv;
@@ -185,10 +195,6 @@ AFRAME.registerComponent('colorwheel', {
 
     let material = new THREE.ShaderMaterial({
       uniforms: {
-        resolution: {
-          type: 'v2',
-          value: new THREE.Vector2(this.brightnessSliderWidth, this.brightnessSliderHeight)
-        },
         color1: {
           type: 'c',
           value: new THREE.Color(0xFFFFFF)
@@ -200,45 +206,44 @@ AFRAME.registerComponent('colorwheel', {
       },
       vertexShader: vertexShader,
       fragmentShader: fragmentShader
-    });
+    })
 
     this.brightnessSlider.getObject3D('mesh').material = material;
     this.brightnessSlider.getObject3D('mesh').material.needsUpdate = true;
 
   },
   initColorWheel: function() {
-    console.debug('setup color wheel')
-    var vertexShader = '\
-      varying vec2 vUv;\
-      void main() {\
-        vUv = uv;\
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\
-        gl_Position = projectionMatrix * mvPosition;\
-      }\
-      ';
+    const vertexShader = `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `;
 
-    var fragmentShader = '\
-      #define M_PI2 6.28318530718\n \
-      uniform float brightness;\
-      varying vec2 vUv;\
-      vec3 hsb2rgb(in vec3 c){\
-          vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, \
-                           0.0, \
-                           1.0 );\
-          rgb = rgb * rgb * (3.0 - 2.0 * rgb);\
-          return c.z * mix( vec3(1.0), rgb, c.y);\
-      }\
-      \
-      void main() {\
-        vec2 toCenter = vec2(0.5) - vUv;\
-        float angle = atan(toCenter.y, toCenter.x);\
-        float radius = length(toCenter) * 2.0;\
-        vec3 color = hsb2rgb(vec3((angle / M_PI2) + 0.5, radius, brightness));\
-        gl_FragColor = vec4(color, 1.0);\
-      }\
-      ';
+    const fragmentShader = `
+      #define M_PI2 6.28318530718
+      uniform float brightness;
+      varying vec2 vUv;
+      vec3 hsb2rgb(in vec3 c){
+          vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0,
+                           0.0,
+                           1.0 );
+          rgb = rgb * rgb * (3.0 - 2.0 * rgb);
+          return c.z * mix( vec3(1.0), rgb, c.y);
+      }
 
-    var material = new THREE.ShaderMaterial({
+      void main() {
+        vec2 toCenter = vec2(0.5) - vUv;
+        float angle = atan(toCenter.y, toCenter.x);
+        float radius = length(toCenter) * 2.0;
+        vec3 color = hsb2rgb(vec3((angle / M_PI2) + 0.5, radius, brightness));
+        gl_FragColor = vec4(color, 1.0);
+      }
+      `;
+
+    let material = new THREE.ShaderMaterial({
       uniforms: {
         brightness: {
           type: 'f',
@@ -249,8 +254,8 @@ AFRAME.registerComponent('colorwheel', {
       fragmentShader: fragmentShader
     });
 
-    this.colorWheel.getObject3D('mesh').material = material;
-    this.colorWheel.getObject3D('mesh').material.needsUpdate = true;
+    this.colorWheel.getObject3D('mesh').material = material
+    this.colorWheel.getObject3D('mesh').material.needsUpdate = true
   },
   onBrightnessDown: function(position) {
     const brightnessSlider = this.brightnessSlider
@@ -285,17 +290,19 @@ AFRAME.registerComponent('colorwheel', {
   updateColor: function() {
     let rgb = this.hsvToRgb(this.hsv)
     let color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')'
-    
+
     const selectionEl = this.selectionEl.getObject3D('mesh')
 
     //Update indicator element of selected color
     if (this.data.showSelection) {
-      //selectionEl.material.color.set(color)
+      //Uncomment for no tweens: selectionEl.material.color.set(color)
       this.setTween(selectionEl.material, selectionEl.material.color, new THREE.Color(color))
       selectionEl.material.needsUpdate = true
     }
 
     this.color = color
+
+    //Notify listeners the color has changed. TODO: Test this works :0
 
     Event.emit(this.el, 'changecolor', color)
     Event.emit(document.body, 'didchangecolor', this.el);
