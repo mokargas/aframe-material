@@ -262,77 +262,56 @@ AFRAME.registerComponent('colorwheel', {
     colorWheel.getObject3D('mesh').updateMatrixWorld();
     colorWheel.getObject3D('mesh').worldToLocal(position);
 
-    let angle = Math.atan2(position.x, position.y)
-    let hue = 360 - (Math.round(angle * (180 / Math.PI)) + 270) % 360
-    let dist = Math.min(Math.sqrt(Math.pow(position.x, 2) + Math.pow(position.y, 2)), radius)
+    let polarPosition = {
+         r: Math.sqrt(position.x * position.x + position.y * position.y),
+         theta: Math.PI + Math.atan2(position.y, position.x)
+       };
+     var angle = ((polarPosition.theta * (180 / Math.PI)) + 180) % 360;
+     this.hsv.h = angle / 360;
+     this.hsv.s = polarPosition.r / radius;
 
-    this.hsv.h = hue
-    this.hsv.s = Math.round((100 / radius) * dist)
     this.el.updateColor()
+    console.debug(this.hsv.h)
   },
 
   updateColor: function() {
-    var rgb = this.hsvToRgb(this.hsv)
-    console.debug(this.hsv, rgb)
+    let rgb = this.hsvToRgb(this.hsv)
+    let color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
 
-    //TODO: Add indicator element of selected color
+    //Update indicator element of selected color
     if(this.data.showSelection){
-      this.selectionEl.getObject3D('mesh').material.color.set( new THREE.Color(rgb))
+      this.selectionEl.getObject3D('mesh').material.color.set( color )
       this.selectionEl.getObject3D('mesh').material.needsUpdate = true
-      console.debug(this.selectionEl.getObject3D('mesh'))
-
     }
 
     this.colorHasChanged = true;
+
+    
   },
   hsvToRgb: function(hsv) {
     var r, g, b, i, f, p, q, t;
-    var h = THREE.Math.clamp(hsv.h, 0, 1);
-    var s = THREE.Math.clamp(hsv.s, 0, 1);
-    var v = hsv.v;
+      var h = THREE.Math.clamp(hsv.h, 0, 1);
+      var s = THREE.Math.clamp(hsv.s, 0, 1);
+      var v = hsv.v;
 
-    i = Math.floor(h * 6);
-    f = h * 6 - i;
-    p = v * (1 - s);
-    q = v * (1 - f * s);
-    t = v * (1 - (1 - f) * s);
-    switch (i % 6) {
-      case 0:
-        r = v;
-        g = t;
-        b = p;
-        break;
-      case 1:
-        r = q;
-        g = v;
-        b = p;
-        break;
-      case 2:
-        r = p;
-        g = v;
-        b = t;
-        break;
-      case 3:
-        r = p;
-        g = q;
-        b = v;
-        break;
-      case 4:
-        r = t;
-        g = p;
-        b = v;
-        break;
-      case 5:
-        r = v;
-        g = p;
-        b = q;
-        break;
-    }
-    return {
-      r: Math.round(r * 255),
-      g: Math.round(g * 255),
-      b: Math.round(b * 255)
-    };
+      i = Math.floor(h * 6);
+      f = h * 6 - i;
+      p = v * (1 - s);
+      q = v * (1 - f * s);
+      t = v * (1 - (1 - f) * s);
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+      return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+      };
   },
 
   rgb2hsv: function(r, g, b) {
