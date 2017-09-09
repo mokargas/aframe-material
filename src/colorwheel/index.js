@@ -1,3 +1,11 @@
+/**
+ * A-FRAME Material
+ * @author Etienne Pinchon epinchon@student.42.us.org
+ *
+ * Colorwheel for A-FRAME Material
+ * @author Mo Kargas (DEVLAD) mo@devlad.com
+ */
+
 const Utils = require('../utils')
 const Event = require('../core/event')
 
@@ -78,7 +86,6 @@ AFRAME.registerComponent('colorwheel', {
     //Background color of this interface
     //TODO: Expose sizing for deeper customisation?
     this.backgroundWidth = this.backgroundHeight = this.data.wheelSize * 2
-
     this.background = document.createElement('a-rounded')
     this.background.setAttribute('radius', 0.02)
     this.background.setAttribute('width', this.backgroundWidth + 2 * padding)
@@ -100,7 +107,7 @@ AFRAME.registerComponent('colorwheel', {
       y: 0,
       z: 0
     })
-    this.el.appendChild(this.colorWheel);
+    this.el.appendChild(this.colorWheel)
 
     //Plane for the brightness slider
     //TODO: Expose height and width for customisation?
@@ -116,7 +123,7 @@ AFRAME.registerComponent('colorwheel', {
       y: 0,
       z: 0
     })
-    this.el.appendChild(this.brightnessSlider);
+    this.el.appendChild(this.brightnessSlider)
 
     //Plane the color selection element will inhabit
     if (this.data.showSelection) {
@@ -130,7 +137,7 @@ AFRAME.registerComponent('colorwheel', {
         y: this.data.wheelSize,
         z: 0.001
       })
-      this.el.appendChild(this.selectionEl);
+      this.el.appendChild(this.selectionEl)
     }
 
     //Color 'cursor'. We'll use this to indicate a rough color selection
@@ -144,10 +151,8 @@ AFRAME.registerComponent('colorwheel', {
       transparent: true
     });
 
-    //A custom THREE object because we don't want the centre vertex, and want a line material
     this.colorCursor = document.createElement('a-entity')
     this.brightnessCursor = document.createElement('a-entity')
-
 
     let geometry = new THREE.TorusBufferGeometry(this.colorCursorOptions.cursorRadius, this.colorCursorOptions.cursorRadius - 0.02, this.colorCursorOptions.cursorSegments, this.colorCursorOptions.cursorSegments / 4)
     this.colorCursor.setObject3D('mesh', new THREE.Mesh(geometry, this.colorCursorOptions.cursorMaterial))
