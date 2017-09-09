@@ -342,8 +342,8 @@ AFRAME.registerComponent('colorwheel', {
   },
 
   updateColor: function() {
-    let rgb = this.hsvToRgb(this.hsv),
-      color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')'
+    let rgb = this.hsvToRgb(this.hsv)
+    let color = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`
 
     const selectionEl = this.selectionEl.getObject3D('mesh'),
       colorCursor = this.colorCursor.getObject3D('mesh'),
@@ -370,11 +370,13 @@ AFRAME.registerComponent('colorwheel', {
     //Notify listeners the color has changed.
     Event.emit(this.el, 'changecolor', {
       style: color,
-      rgb: rgb
+      rgb: rgb,
+      hsv: this.hsv
     })
     Event.emit(document.body, 'didchangecolor', {
       style: color,
-      rgb: rgb
+      rgb: rgb,
+      hsv: this.hsv
     })
 
   },

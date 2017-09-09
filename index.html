@@ -17,7 +17,14 @@
          init: function(){
            const el = this.el;
            document.body.addEventListener('didchangecolor', function(evt){
-              el.setAttribute('material', 'topColor', evt.detail.style)
+
+              //Available return formats from colorwheel
+              let style = evt.detail.style
+              let rgb = evt.detail.rgb
+              let hsv = evt.detail.hsv
+
+              //NOTE: aframe-gradient-sky requires colors in this format:
+              el.setAttribute('material', 'topColor', ''+rgb.r+' '+rgb.g+' '+rgb.b+'')
            })
          }
        })
