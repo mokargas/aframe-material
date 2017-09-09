@@ -11,11 +11,22 @@
     <script type="text/javascript">
       AFRAME.ASSETS_PATH = "./assets";
     </script>
+    <script type="text/javascript">
+
+       AFRAME.registerComponent('color-listener', {
+         init: function(){
+           const el = this.el;
+           document.body.addEventListener('didchangecolor', function(evt){
+              el.setAttribute('material', 'topColor', evt.detail.style)
+           })
+         }
+       })
+    </script>
   </head>
   <body>
-    <a-scene>
-      <!-- <a-entity laser-controls="hand: right"></a-entity>
-      <a-entity laser-controls="hand: left"></a-entity> -->
+    <a-scene stats>
+      <a-entity laser-controls="hand: right"></a-entity>
+      <a-entity laser-controls="hand: left"></a-entity>
       <a-entity>
         <a-camera raycaster look-controls-enabled wasd-controls-enabled>
           <a-entity cursor="rayOrigin: mouse"></a-entity>
@@ -43,14 +54,16 @@
       </a-rounded>
       <!-- END FORM -->
 
+      <!-- BEGIN COLORWHEEL -->
       <a-colorwheel position="-1.578 1 -2.5" rotation="0 21.601 0"></a-colorwheel>
+      <!-- END COLORWHEEL -->
 
       <!-- BEGIN TOAST -->
       <a-toast message="This is a toast" action="Got it"></a-toast>
       <!-- END TOAST -->
 
       <!-- BEGIN ENVIRONEMENT -->
-      <a-gradient-sky material="shader: gradient; topColor: 255 0 0; bottomColor: 0 121 255;"></a-gradient-sky>
+      <a-gradient-sky material="shader: gradient; topColor: 255 0 0; bottomColor: 0 121 255;" color-listener></a-gradient-sky>
       <!-- END ENVIRONEMENT -->
     </a-scene>
     <script type="text/javascript">
@@ -63,5 +76,6 @@
         toast.show();
       })
     </script>
+
   </body>
 </html>

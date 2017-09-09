@@ -1,8 +1,17 @@
-const Utils = require('../utils');
-const Event = require('../core/event');
+const Utils = require('../utils')
+const Event = require('../core/event')
 
 AFRAME.registerComponent('colorwheel', {
   dependencies: ['raycaster'],
+  tweenDuration: 280,
+  tweenEasing: TWEEN.Easing.Cubic.Out,
+  padding: 0.15,
+  hsv: {
+    h: 0.0,
+    s: 0.0,
+    v: 1.0
+  },
+  color: '#ffffff',
   schema: {
     value: {
       type: 'string',
@@ -39,44 +48,38 @@ AFRAME.registerComponent('colorwheel', {
       default: 0.10
     }
   },
-  //Util to animate between colors. Item should be a material.
-  setTween: function(item, fromColor, toColor) {
-    this.tween = new TWEEN.Tween(new THREE.Color(fromColor)).to(toColor, 500).onUpdate(function() {
-      item.color.r = this.r;
-      item.color.g = this.g;
-      item.color.b = this.b;
-    }).start()
+  //Util to animate between positions. Item represents a mesh or object containing a position
+  setPositionTween: function(item, fromPosition, toPosition) {
+    this.tween = new TWEEN.Tween(fromPosition).to(toPosition, this.tweenDuration).onUpdate(function() {
+      item.position.x = this.x
+      item.position.y = this.y
+      item.position.z = this.z
+    }).easing(this.tweenEasing).start()
+  },
+  //Util to animate between colors. Item represents a mesh or object's material
+  setColorTween: function(item, fromColor, toColor) {
+    this.tween = new TWEEN.Tween(new THREE.Color(fromColor)).to(toColor, this.tweenDuration).onUpdate(function() {
+      item.color.r = this.r
+      item.color.g = this.g
+      item.color.b = this.b
+    }).easing(this.tweenEasing).start()
   },
   init: function() {
-    const that = this
-
-    //Padding around background, between elements
-    //TODO: Expose?
-    const padding = 0.15
-
-    //Selected HSV color of the wheel
-    this.hsv = {
-      h: 0.0,
-      s: 0.0,
-      v: 1.0
-    }
-
-    this.color = '#ffffff'
-
-    const defaultMaterial = {
-      color: '#ffffff',
-      flatShading: true,
-      transparent: true,
-      fog: false,
-      side: 'double'
-    }
+    const that = this,
+      padding = this.padding,
+      defaultMaterial = {
+        color: '#ffffff',
+        flatShading: true,
+        transparent: true,
+        fog: false,
+        side: 'double'
+      }
 
     //Background color of this interface
-    //TODO: Expose?
-    this.backgroundWidth = this.data.wheelSize * 2;
-    this.backgroundHeight = this.data.wheelSize * 2;
+    //TODO: Expose sizing for deeper customisation?
+    this.backgroundWidth = this.backgroundHeight = this.data.wheelSize * 2
 
-    this.background = document.createElement('a-rounded');
+    this.background = document.createElement('a-rounded')
     this.background.setAttribute('radius', 0.02)
     this.background.setAttribute('width', this.backgroundWidth + 2 * padding)
     this.background.setAttribute('height', this.backgroundHeight + 2 * padding)
@@ -134,17 +137,29 @@ AFRAME.registerComponent('colorwheel', {
     this.colorCursorOptions = {
       cursorRadius: 0.025,
       cursorSegments: 32,
-      cursorColor: new THREE.Color(0x000000),
-      lineWidth: 3.0
+      cursorColor: new THREE.Color(0x000000)
     }
-    this.colorCursorOptions.cursorMaterial = new THREE.LineBasicMaterial( { color: this.colorCursorOptions.cursorColor, transparent:true, linewidth: this.colorCursorOptions.lineWidth } ),
+    this.colorCursorOptions.cursorMaterial = new THREE.MeshBasicMaterial({
+      color: this.colorCursorOptions.cursorColor,
+      transparent: true
+    });
 
     //A custom THREE object because we don't want the centre vertex, and want a line material
     this.colorCursor = document.createElement('a-entity')
-    let geometry = new THREE.CircleGeometry( this.colorCursorOptions.cursorRadius, this.colorCursorOptions.cursorSegments )
-    geometry.vertices.shift()
-    this.colorCursor.setObject3D('mesh', new THREE.Line( geometry, this.colorCursorOptions.cursorMaterial ))
-    this.el.appendChild(this.colorCursor);
+    this.brightnessCursor = document.createElement('a-entity')
+
+
+    let geometry = new THREE.TorusBufferGeometry(this.colorCursorOptions.cursorRadius, this.colorCursorOptions.cursorRadius - 0.02, this.colorCursorOptions.cursorSegments, this.colorCursorOptions.cursorSegments / 4)
+    this.colorCursor.setObject3D('mesh', new THREE.Mesh(geometry, this.colorCursorOptions.cursorMaterial))
+    this.brightnessCursor.setObject3D('mesh', new THREE.Mesh(geometry, this.colorCursorOptions.cursorMaterial))
+
+    this.el.appendChild(this.colorCursor)
+    this.brightnessSlider.appendChild(this.brightnessCursor)
+    this.brightnessCursor.setAttribute('position', {
+      x: 0,
+      y: this.brightnessSliderHeight / 2,
+      z: 0
+    })
 
     //Handlers
     this.bindMethods()
@@ -186,8 +201,8 @@ AFRAME.registerComponent('colorwheel', {
     /*
      * NOTE:
      *
-     * In A-Painter, the brightness slider is actually a model submesh or element.
-     * We're going to generate it using glsl here and add it to our plane.
+     * In A-Painter, the brightness slider is actually a model submesh / element.
+     * Here we generate it using glsl here and add it to our plane material
      */
 
     const vertexShader = `
@@ -232,7 +247,9 @@ AFRAME.registerComponent('colorwheel', {
 
   },
   initColorWheel: function() {
+    let colorWheel = this.colorWheel.getObject3D('mesh')
     const vertexShader = `
+
       varying vec2 vUv;
       void main() {
         vUv = uv;
@@ -271,61 +288,94 @@ AFRAME.registerComponent('colorwheel', {
       fragmentShader: fragmentShader
     });
 
-    this.colorWheel.getObject3D('mesh').material = material
-    this.colorWheel.getObject3D('mesh').material.needsUpdate = true
+    colorWheel.material = material
+    colorWheel.material.needsUpdate = true
   },
   onBrightnessDown: function(position) {
-    const brightnessSlider = this.brightnessSlider
+    const brightnessSlider = this.brightnessSlider.getObject3D('mesh')
+    const brightnessCursor = this.brightnessCursor.getObject3D('mesh')
+    const colorWheel = this.colorWheel.getObject3D('mesh')
 
-    brightnessSlider.getObject3D('mesh').updateMatrixWorld()
-    brightnessSlider.getObject3D('mesh').worldToLocal(position)
+    brightnessSlider.updateMatrixWorld()
+    brightnessSlider.worldToLocal(position)
 
-    //Value between 0 and 1
-    //Plane is centre registered
+    //Brightness is a value between 0 and 1. The parent plane is centre registered, hence offset
     let cursorOffset = position.y + this.brightnessSliderHeight / 2
-    let brightness =  cursorOffset  / this.brightnessSliderHeight
+    let brightness = cursorOffset / this.brightnessSliderHeight
+    let updatedPosition = {
+      x: 0,
+      y: position.y - this.brightnessSliderHeight / 2,
+      z: 0
+    }
 
-    this.colorWheel.getObject3D('mesh').material.uniforms['brightness'].value = brightness
+    //Set brightness cursor position to offset position
+    // Uncomment to remove anims: brightnessCursor.position.copy(updatedPosition)
+    this.setPositionTween(brightnessCursor, brightnessCursor.position, updatedPosition)
+
+    //Update material brightness
+    colorWheel.material.uniforms['brightness'].value = brightness
     this.hsv.v = brightness
-
     this.el.updateColor()
   },
   onHueDown: function(position) {
-    const colorWheel = this.colorWheel,
+    const colorWheel = this.colorWheel.getObject3D('mesh'),
+      colorCursor = this.colorCursor.getObject3D('mesh'),
       radius = this.data.wheelSize
 
-    colorWheel.getObject3D('mesh').updateMatrixWorld();
-    colorWheel.getObject3D('mesh').worldToLocal(position);
+    colorWheel.updateMatrixWorld()
+    colorWheel.worldToLocal(position)
 
+    // Uncomment to remove anims: this.colorCursor.getObject3D('mesh').position.copy(position)
+    this.setPositionTween(colorCursor, colorCursor.position, position)
+
+    //Determine Hue and Saturation value from polar co-ordinates
     let polarPosition = {
       r: Math.sqrt(position.x * position.x + position.y * position.y),
       theta: Math.PI + Math.atan2(position.y, position.x)
-    };
-    var angle = ((polarPosition.theta * (180 / Math.PI)) + 180) % 360;
-    this.hsv.h = angle / 360;
-    this.hsv.s = polarPosition.r / radius;
+    }
+
+    let angle = ((polarPosition.theta * (180 / Math.PI)) + 180) % 360
+    this.hsv.h = angle / 360
+    this.hsv.s = polarPosition.r / radius
 
     this.el.updateColor()
   },
 
   updateColor: function() {
-    let rgb = this.hsvToRgb(this.hsv)
-    let color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')'
+    let rgb = this.hsvToRgb(this.hsv),
+      color = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')'
 
-    const selectionEl = this.selectionEl.getObject3D('mesh')
+    const selectionEl = this.selectionEl.getObject3D('mesh'),
+      colorCursor = this.colorCursor.getObject3D('mesh'),
+      brightnessCursor = this.brightnessCursor.getObject3D('mesh')
+
 
     //Update indicator element of selected color
     if (this.data.showSelection) {
       //Uncomment for no tweens: selectionEl.material.color.set(color)
-      this.setTween(selectionEl.material, selectionEl.material.color, new THREE.Color(color))
+      this.setColorTween(selectionEl.material, selectionEl.material.color, new THREE.Color(color))
       selectionEl.material.needsUpdate = true
     }
 
-    this.color = color
+    //Change cursor colors based on brightness
+    if(this.hsv.v >= 0.5){
+      this.setColorTween(colorCursor.material, colorCursor.material.color, new THREE.Color(0x000000))
+      this.setColorTween(brightnessCursor.material, brightnessCursor.material.color, new THREE.Color(0x000000))
+    } else {
+      this.setColorTween(colorCursor.material, colorCursor.material.color, new THREE.Color(0xFFFFFF))
+      this.setColorTween(brightnessCursor.material, brightnessCursor.material.color, new THREE.Color(0xFFFFFF))
 
-    //Notify listeners the color has changed. TODO: Test this works :0
-    Event.emit(this.el, 'changecolor', color)
-    Event.emit(document.body, 'didchangecolor', this.el);
+    }
+
+    //Notify listeners the color has changed.
+    Event.emit(this.el, 'changecolor', {
+      style: color,
+      rgb: rgb
+    })
+    Event.emit(document.body, 'didchangecolor', {
+      style: color,
+      rgb: rgb
+    })
 
   },
   hsvToRgb: function(hsv) {
@@ -377,9 +427,8 @@ AFRAME.registerComponent('colorwheel', {
       b: Math.round(b * 255)
     };
   },
-  update: function() {
-    const that = this;
-    that.background.setAttribute('color', this.data.backgroundColor)
+  update: function(oldData) {
+    this.background.setAttribute('color', this.data.backgroundColor)
   },
   tick: function() {},
   remove: function() {},
